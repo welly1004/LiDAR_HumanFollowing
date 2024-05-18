@@ -20,7 +20,8 @@ class LegDetectionNode(Node):
         self.arrow_publisher = self.create_publisher(Marker, '/vector_arrows', 10)
         self.front_arrow_publisher = self.create_publisher(Marker, '/front_arrow', 10)
         self.distance_publisher = self.create_publisher(Marker, '/vector_distance', 10)
-       
+        
+        self.shutdown_distance_threshold = 0.2  # 關閉節點的距離閾值，單位為米
 
     def scan_callback(self, msg):
         leg_points = self.detect_leg_points(msg)
@@ -37,6 +38,13 @@ class LegDetectionNode(Node):
             self.clear_distance(msg.header.frame_id)
         self.publish_front_arrow(msg.header.frame_id)
 
+        if hasattr(self, 'target_detected') and self.target_detected:
+            distance_to_target = self.calculate_distance([0, 0], self.target_position)
+            if distance_to_target < self.shutdown_distance_threshold:
+                self.get_logger().info('Distance to target is less than 20cm. Shutting down node.')
+                rclpy.shutdown()  # 關閉ROS節點
+                return
+
     def detect_leg_points(self, scan_msg):
         ranges = np.array(scan_msg.ranges)
         angles = np.linspace(scan_msg.angle_min, scan_msg.angle_max, len(ranges))
@@ -47,10 +55,11 @@ class LegDetectionNode(Node):
         
         if not self.target_detected:
         
-            valid_mask = (ranges > 0.1) & (ranges < 0.3)
+            valid_mask = (ranges > 0.1) & (ranges < 0.35)
         else:
-          
+            
             valid_mask = (ranges < 3.0)
+            
 
         ranges = ranges[valid_mask]
         angles = angles[valid_mask]
@@ -67,15 +76,18 @@ class LegDetectionNode(Node):
         
         
         if self.target_detected and clustering_successful:
-            target_index = self.find_nearest_point_index(points, self.target_position)
-            valid_mask = np.linalg.norm(points - points[target_index], axis=1) < 0.1
+            # target_index = self.find_nearest_point_index(points, self.target_position)
+            valid_mask = np.linalg.norm(points - self.target_position,axis=1) < 0.2
             if np.sum(valid_mask)!=0:
                 points = points[valid_mask]
                 # clustering = DBSCAN(eps=0.1, min_samples=3).fit(points)  
                 cluster_mean = np.mean(points, axis=0)
                 self.target_position = cluster_mean
-            leg_points.append(self.target_position)
             
+            leg_points.append(self.target_position)
+            # if np.any(ranges < 0.20):
+            #     rclpy.shutdown()  # 如果存在距离小于30厘米的点，则关闭ROS节点
+            #     return []  # 返回空列表，停止检测
 
         if clustering_successful and (not self.target_detected):   
         # else:
@@ -97,9 +109,9 @@ class LegDetectionNode(Node):
 
 
 
-    def find_nearest_point_index(self, points, target_position):
-        distances = np.linalg.norm(points - self.target_position, axis=1)
-        return np.argmin(distances)
+    # def find_nearest_point_index(self,points, target_position):
+    #     distances = np.linalg.norm(points - target_position, axis=1)
+    #     return np.argmin(distances)
 
         
     def publish_vector_arrows(self, frame_id, leg_points):

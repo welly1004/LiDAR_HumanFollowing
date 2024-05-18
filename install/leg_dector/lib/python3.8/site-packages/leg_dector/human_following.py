@@ -78,8 +78,9 @@ class HumanFollowingNode(Node):
                 print("Second point coordinates (x, y):", x, y)
                 
                 magnitude_a = math.sqrt(x ** 2 + y ** 2)
-                magnitude_b = math.sqrt(0 ** 2 + 1 ** 2) 
-                
+                magnitude_b = math.sqrt(0 ** 2 + 1 ** 2)
+
+                magnitude_a = round(magnitude_a, 2)
                 self.get_logger().info(f"Received distance value: {magnitude_a}"  )
                 
                 self.distance=magnitude_a-0.5
