@@ -32,7 +32,7 @@ class HumanFollowingNode(Node):
         
         self.angle_subscriber = self.create_subscription(
             Marker,
-            '/vector_arrows',
+            '/robot_to_leg_vector',
             self.vector_arrows_callback,
             10)
         self.cmd_vel_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -102,7 +102,7 @@ class HumanFollowingNode(Node):
                     control_output_AG = self.angle_controller.update(self.angle_degrees)
 
                     self.get_logger().info(f"Distance control output: {control_output_DS}")
-                    self.get_logger().info(f"Angle control output: {control_output_AG}")
+                    self.get_logger().info(f'''Angle control output: {control_output_AG}''')
 
 
                     twist_msg= Twist()
